@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Calculadora hecha por Wil</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { min-height: 100vh; background-color: #232323; display: grid; place-items: center; }
+    .calculadora {
+      background-color: #15173c; color: white; width: 350px; max-width: 100%;
+      padding: 1.5rem; border-radius: 1rem; display: grid; grid-template-columns: repeat(4,1fr); gap: .5rem;
+    }
+    .pantalla {
+      grid-column: 1 / -1; background-color:#090c31; padding: 1.5rem; font-size: 2rem; text-align: right;
+      border-radius: .5rem; margin-bottom: 1rem; font-family: monospace; font-weight: 600; cursor: default;
+      min-height: 64px; user-select: none;
+    }
+    button { padding: .9rem; border: none; border-radius: .5rem; background: #1e2156; color: #fff; font-weight: 700; cursor: pointer; transition: background .2s ease; }
+    button:hover { background-color:#090c31; }
+    #cero { grid-column: span 2; }
+    #igual { grid-row: span 2; background-color: #e6394a; }
+    #igual:hover { background-color: #d33444; }
+  </style>
+</head>
+<body>
+  <div class="calculadora">
+    <div class="pantalla" id="pantalla">0</div>
+    <button id="c">C</button>
+    <button id="borrar">&larr;</button>
+    <button data-val="/">/</button>
+    <button data-val="*">*</button>
+    <button data-val="7">7</button>
+    <button data-val="8">8</button>
+    <button data-val="9">9</button>
+    <button data-val="-">-</button>
+    <button data-val="4">4</button>
+    <button data-val="5">5</button>
+    <button data-val="6">6</button>
+    <button data-val="+">+</button>
+    <button data-val="1">1</button>
+    <button data-val="2">2</button>
+    <button data-val="3">3</button>
+    <button id="igual">=</button>
+    <button id="cero" data-val="0">0</button>
+    <button data-val=".">.</button>
+  </div>
+
+  <script>
+    // Referencias
+    const pantalla = document.getElementById('pantalla');
+    const botones  = document.querySelectorAll('.calculadora button');
+
+    // Sanitizador muy simple: solo números, operadores básicos, punto y paréntesis.
+    function safeEval(expr) {
+      const s = String(expr);
+      if (!/^[0-9+\-*/.()\s]+$/.test(s)) throw new Error('Expresión inválida');
+      // Eval controlado usando Function (sin scope local)
+      // eslint-disable-next-line no-new-func
+      const fn = new Function('return (' + s + ')');
+      const out = fn();
+      if (typeof out !== 'number' || !isFinite(out)) throw new Error('Cálculo inválido');
+      return out;
+    }
+
+    function escribir(valor) {
+      // Si la pantalla muestra 0 o error, reemplaza
+      if (pantalla.textContent === '0' || pantalla.textContent === 'error') {
+        // No permitir iniciar por operador (salvo '-') o punto
+        const esOperador = ['+','*','/'].includes(valor);
+        if (esOperador) return; // ignora
+        if (valor === '.') { pantalla.textContent = '0.'; return; }
+        pantalla.textContent = valor;
+      } else {
+        // Evita operadores duplicados seguidos
+        const ultimo = pantalla.textContent.slice(-1);
+        const ops = ['+','-','*','/','.'];
+        if (ops.includes(ultimo) && ops.includes(valor)) {
+          // Reemplaza el último operador por el nuevo
+          pantalla.textContent = pantalla.textContent.slice(0, -1) + valor;
+        } else {
+          pantalla.textContent += valor;
+        }
+      }
+    }
+
+    function borrarUno() {
+      const t = pantalla.textContent;
+      if (t === 'error') { pantalla.textContent = '0'; return; }
+      if (t.length <= 1) pantalla.textContent = '0'; else pantalla.textContent = t.slice(0, -1);
+    }
+
+    function limpiar() { pantalla.textContent = '0'; }
+
+    function calcular() {
+      try {
+        const resultado = safeEval(pantalla.textContent);
+        pantalla.textContent = String(resultado);
+      } catch (e) {
+        pantalla.textContent = 'error';
+      }
+    }
+
+    // Eventos de los botones
+    botones.forEach(boton => {
+      boton.addEventListener('click', () => {
+        const { id } = boton;
+        if (id === 'c') return limpiar();
+        if (id === 'borrar') return borrarUno();
+        if (id === 'igual') return calcular();
+        const val = boton.getAttribute('data-val');
+        if (val) escribir(val);
+      });
+    });
+
+    // Teclado (opcional)
+    document.addEventListener('keydown', (e) => {
+      const k = e.key;
+      if (/^[0-9]$/.test(k)) return escribir(k);
+      if (['+','-','*','/'].includes(k)) return escribir(k);
+      if (k === '.') return escribir('.');
+      if (k === 'Backspace') return borrarUno();
+      if (k === 'Enter' || k === '=') { e.preventDefault(); return calcular(); }
+      if (k.toLowerCase() === 'c') return limpiar();
+    });
+  </script>
+</body>
+</html>
